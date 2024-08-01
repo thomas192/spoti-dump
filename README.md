@@ -21,7 +21,7 @@ While Spotify is a reliable service, having a local backup of your music library
 1. Install Rust: [rustup.rs](https://rustup.rs/)
 2. Clone and run:
    ```
-   git clone https://github.com/yourusername/spoti-dump.git
+   git clone https://github.com/thomas192/spoti-dump.git
    cd spoti-dump
    cargo run --release
    ```
