@@ -2,6 +2,8 @@ use anyhow::{Context, Result};
 use csv::Writer;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use serde::Deserialize;
+use std::fs;
+use std::path::Path;
 
 use crate::types::Track;
 
@@ -11,10 +13,15 @@ struct SpotifyResponse {
     next: Option<String>,
 }
 
-pub async fn dump_saved_tracks(access_token: String) -> Result<()> {
-    let output_file = "saved_tracks.csv";
-    let mut writer = Writer::from_path(output_file)
-        .with_context(|| format!("Failed to create CSV file: {}", output_file))?;
+pub async fn dump_saved_tracks(access_token: &String) -> Result<()> {
+    let dump_dir = Path::new("dump");
+    if !dump_dir.exists() {
+        fs::create_dir(dump_dir).context("Failed to create dump directory")?;
+    }
+
+    let output_file = dump_dir.join("saved_tracks.csv");
+    let mut writer = Writer::from_path(&output_file)
+        .with_context(|| format!("Failed to create CSV file: {}", output_file.to_str().unwrap()))?;
 
     writer.write_record(&["Added At", "Track Name", "Artists", "Album"])?;
 
@@ -60,7 +67,7 @@ pub async fn dump_saved_tracks(access_token: String) -> Result<()> {
     }
 
     writer.flush()?;
-    println!("Saved tracks have been exported to {}", output_file);
+    println!("Saved tracks have been exported to {}", output_file.to_str().unwrap());
 
     Ok(())
 }
