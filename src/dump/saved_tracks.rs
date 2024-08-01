@@ -20,8 +20,12 @@ pub async fn dump_saved_tracks(access_token: &String) -> Result<()> {
     }
 
     let output_file = dump_dir.join("saved_tracks.csv");
-    let mut writer = Writer::from_path(&output_file)
-        .with_context(|| format!("Failed to create CSV file: {}", output_file.to_str().unwrap()))?;
+    let mut writer = Writer::from_path(&output_file).with_context(|| {
+        format!(
+            "Failed to create CSV file: {}",
+            output_file.to_str().unwrap()
+        )
+    })?;
 
     writer.write_record(&["Added At", "Track Name", "Artists", "Album"])?;
 
@@ -67,7 +71,10 @@ pub async fn dump_saved_tracks(access_token: &String) -> Result<()> {
     }
 
     writer.flush()?;
-    println!("Saved tracks have been exported to {}", output_file.to_str().unwrap());
+    println!(
+        "Saved tracks have been exported to {}",
+        output_file.to_str().unwrap()
+    );
 
     Ok(())
 }

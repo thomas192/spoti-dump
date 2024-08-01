@@ -39,7 +39,14 @@ pub async fn dump_playlists(access_token: &String) -> Result<()> {
         let playlists = fetch_playlists(&client, &access_token, &url).await?;
 
         for playlist in &playlists.items {
-            dump_playlist(&client, &access_token, &playlist.id, &playlist.name, &dump_dir).await?;
+            dump_playlist(
+                &client,
+                &access_token,
+                &playlist.id,
+                &playlist.name,
+                &dump_dir,
+            )
+            .await?;
         }
 
         match playlists.next {
@@ -121,7 +128,8 @@ async fn dump_playlist(
     writer.flush()?;
     println!(
         "Playlist '{}' has been exported to {}",
-        playlist_name, output_file.to_str().unwrap()
+        playlist_name,
+        output_file.to_str().unwrap()
     );
 
     Ok(())
