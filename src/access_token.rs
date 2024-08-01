@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use base64::{engine::general_purpose, Engine as _};
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 use serde::Deserialize;
 use std::env;
@@ -56,7 +57,11 @@ pub async fn get_access_token() -> Result<String> {
 }
 
 fn get_authorization_code(client_id: &str, redirect_uri: &str) -> Result<(String, String)> {
-    let state = "some_random_state_string";
+    // Generate a random state string
+    let state: String = {
+        let random_bytes: Vec<u8> = (0..16).map(|_| rand::random::<u8>()).collect();
+        general_purpose::URL_SAFE_NO_PAD.encode(&random_bytes)
+    };
     let scope = "user-library-read playlist-read-private";
 
     let auth_url = Url::parse_with_params(
@@ -65,7 +70,7 @@ fn get_authorization_code(client_id: &str, redirect_uri: &str) -> Result<(String
             ("client_id", client_id),
             ("response_type", "code"),
             ("redirect_uri", redirect_uri),
-            ("state", state),
+            ("state", &state),
             ("scope", scope),
         ],
     )?;
@@ -78,8 +83,6 @@ fn get_authorization_code(client_id: &str, redirect_uri: &str) -> Result<(String
     println!("Waiting for Spotify authorization...");
 
     for request in server.incoming_requests() {
-        println!("Request: {request:?}");
-
         let url = Url::parse(&format!("http://localhost{}", request.url()))?;
         let code = url
             .query_pairs()
