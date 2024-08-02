@@ -49,7 +49,6 @@ While Spotify is a reliable service, having a local backup of your music library
    cd spoti-dump
    cargo run --release -- export
    ```
-<<<<<<< HEAD
 
 ### Commands
 
@@ -79,7 +78,3 @@ spoti-dump import
 - The CSV files to be imported must be in the same format as those created by the `export` command.
 - Place the CSV files you want to import in a folder named `dump` in the same directory as the executable.
 - Ensure that the Spotify account email you added in the User Management step of the Prerequisites section matches the account you're importing to.
-=======
-3. Follow authentication prompts.
-4. Find exports in the `dump` folder.
->>>>>>> e1e6ebaf1ad8723dadfd9a9d9f9fe2f5973ee14b
