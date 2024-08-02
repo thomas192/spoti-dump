@@ -78,3 +78,24 @@ spoti-dump import
 - The CSV files to be imported must be in the same format as those created by the `export` command.
 - Place the CSV files you want to import in a folder named `dump` in the same directory as the executable.
 - Ensure that the Spotify account email you added in the User Management step of the Prerequisites section matches the account you're importing to.
+
+### Authorization Process
+
+After executing either the `export` or `import` command, you will be prompted to approve authorization for the app to perform the requested action. This process involves the following steps:
+
+1. A browser window will open automatically, directing you to the Spotify authorization page.
+2. Log in to your Spotify account if you haven't already.
+3. Review the permissions requested by the app and click "Agree" to authorize.
+4. You will be redirected to a success page, indicating that the authorization is complete.
+5. Return to the terminal where you ran the command to continue the process.
+
+### Switching Accounts for Import
+
+If you want to import data to a different Spotify account than the one you exported from, follow these steps:
+
+1. After completing an export, log out of your Spotify account in the browser.
+2. Before running the `import` command, log in to the Spotify account you want to import the data to.
+3. Ensure that you've added this account's email to the User Management section in your Spotify Developer Dashboard as mentioned in the Prerequisites.
+4. Run the `import` command. When the authorization page opens, it should now be for the account you want to import to.
+
+**Note:** Always make sure you're logged into the correct Spotify account before authorizing the app for import to avoid importing data to the wrong account.
