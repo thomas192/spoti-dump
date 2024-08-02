@@ -13,7 +13,7 @@ struct SpotifyResponse {
     next: Option<String>,
 }
 
-pub async fn dump_saved_tracks(access_token: &String) -> Result<()> {
+pub async fn export_saved_tracks(access_token: &String) -> Result<()> {
     let dump_dir = Path::new("dump");
     if !dump_dir.exists() {
         fs::create_dir(dump_dir).context("Failed to create dump directory")?;
@@ -27,7 +27,7 @@ pub async fn dump_saved_tracks(access_token: &String) -> Result<()> {
         )
     })?;
 
-    writer.write_record(&["Added At", "Track Name", "Artists", "Album"])?;
+    writer.write_record(&["Added At", "Track Name", "Artists", "Album", "Id"])?;
 
     let client = reqwest::Client::new();
     let mut url = "https://api.spotify.com/v1/me/tracks?limit=50&offset=0".to_string();
@@ -57,10 +57,11 @@ pub async fn dump_saved_tracks(access_token: &String) -> Result<()> {
                 .join(", ");
 
             writer.write_record(&[
-                &track.added_at,
+                &track.added_at.unwrap_or("Unknown".to_string()),
                 &track.track.name,
                 &artists,
                 &track.track.album.name,
+                &track.track.id,
             ])?;
         }
 

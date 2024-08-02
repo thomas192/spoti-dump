@@ -2,12 +2,13 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Track {
-    pub added_at: String,
+    pub added_at: Option<String>,
     pub track: TrackDetails,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct TrackDetails {
+    pub id: String,
     pub name: String,
     pub artists: Vec<Artist>,
     pub album: Album,

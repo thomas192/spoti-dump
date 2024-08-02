@@ -26,7 +26,7 @@ struct PlaylistTracksResponse {
     next: Option<String>,
 }
 
-pub async fn dump_playlists(access_token: &String) -> Result<()> {
+pub async fn export_playlists(access_token: &String) -> Result<()> {
     let dump_dir = Path::new("dump");
     if !dump_dir.exists() {
         fs::create_dir(dump_dir).context("Failed to create dump directory")?;
@@ -39,7 +39,7 @@ pub async fn dump_playlists(access_token: &String) -> Result<()> {
         let playlists = fetch_playlists(&client, &access_token, &url).await?;
 
         for playlist in &playlists.items {
-            dump_playlist(
+            export_playlist(
                 &client,
                 &access_token,
                 &playlist.id,
@@ -80,7 +80,7 @@ async fn fetch_playlists(
     Ok(playlists_response)
 }
 
-async fn dump_playlist(
+async fn export_playlist(
     client: &reqwest::Client,
     access_token: &str,
     playlist_id: &str,
@@ -92,7 +92,7 @@ async fn dump_playlist(
     let mut writer = Writer::from_path(&output_file)
         .with_context(|| format!("Failed to create CSV file: {:?}", output_file))?;
 
-    writer.write_record(&["Added At", "Track Name", "Artists", "Album"])?;
+    writer.write_record(&["Added At", "Track Name", "Artists", "Album", "Id"])?;
 
     let mut url = format!(
         "https://api.spotify.com/v1/playlists/{}/tracks?limit=50",
@@ -100,9 +100,10 @@ async fn dump_playlist(
     );
 
     loop {
-        let tracks = fetch_playlist_tracks(client, access_token, &url).await?;
+        let tracks_response: PlaylistTracksResponse =
+            fetch_playlist_tracks(client, access_token, &url).await?;
 
-        for track in &tracks.items {
+        for track in tracks_response.items {
             let artists = track
                 .track
                 .artists
@@ -112,14 +113,15 @@ async fn dump_playlist(
                 .join(", ");
 
             writer.write_record(&[
-                &track.added_at,
+                &track.added_at.unwrap_or("Unknown".to_string()),
                 &track.track.name,
                 &artists,
                 &track.track.album.name,
+                &track.track.id,
             ])?;
         }
 
-        match tracks.next {
+        match tracks_response.next {
             Some(next_url) => url = next_url,
             None => break,
         }

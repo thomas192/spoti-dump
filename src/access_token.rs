@@ -6,6 +6,8 @@ use std::env;
 use tiny_http::{Response, Server};
 use url::Url;
 
+use crate::Commands;
+
 #[derive(Deserialize)]
 struct TokenResponse {
     access_token: String,
@@ -15,7 +17,7 @@ struct TokenResponse {
     refresh_token: String,
 }
 
-pub async fn get_access_token() -> Result<String> {
+pub async fn get_access_token(command: Commands) -> Result<String> {
     dotenv::dotenv().context("Failed to load .env file")?;
 
     let client_id = env::var("SPOTIFY_CLIENT_ID").context("SPOTIFY_CLIENT_ID not set")?;
@@ -24,7 +26,7 @@ pub async fn get_access_token() -> Result<String> {
     let redirect_uri = "http://localhost:8888/callback";
 
     // Step 1: Get the authorization code
-    let (code, state) = get_authorization_code(&client_id, redirect_uri)?;
+    let (code, _) = get_authorization_code(command, &client_id, redirect_uri)?;
 
     // Step 2: Exchange the code for an access token
     let client = reqwest::Client::new();
@@ -56,13 +58,21 @@ pub async fn get_access_token() -> Result<String> {
     Ok(response.access_token)
 }
 
-fn get_authorization_code(client_id: &str, redirect_uri: &str) -> Result<(String, String)> {
+fn get_authorization_code(
+    command: Commands,
+    client_id: &str,
+    redirect_uri: &str,
+) -> Result<(String, String)> {
     // Generate a random state string
     let state: String = {
         let random_bytes: Vec<u8> = (0..16).map(|_| rand::random::<u8>()).collect();
         general_purpose::URL_SAFE_NO_PAD.encode(&random_bytes)
     };
-    let scope = "user-library-read playlist-read-private";
+
+    let scope = match command {
+        Commands::Export => "user-library-read playlist-read-private",
+        Commands::Import => "user-library-modify playlist-modify-public playlist-modify-private",
+    };
 
     let auth_url = Url::parse_with_params(
         "https://accounts.spotify.com/authorize",
