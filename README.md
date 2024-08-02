@@ -15,6 +15,7 @@ While Spotify is a reliable service, having a local backup of your music library
    - Create a new app
 
 2. **App Configuration**
+   - Click Edit and add the following Redirect URI: http://localhost:8888/callback
    - In your app's settings, locate and copy the Client ID and Client Secret
 
 3. **Environment Setup**
