@@ -1,10 +1,10 @@
 # spoti-dump
 
-Export your Spotify saved tracks and playlists to csv.
+Export your Spotify saved tracks and playlists to csv, and import those same tracks to another Spotify account.
 
 ## Why
 
-While Spotify is a reliable service, having a local backup of your music library is always a good practice. Never lose your music collection, carefully curated over the years. 
+While Spotify is a reliable service, having a local backup of your music library is always a good practice. Never lose your music collection, carefully curated over the years. Also, makes it easy to swap Spotify account for whatever reason. 
 
 ## Usage
 
