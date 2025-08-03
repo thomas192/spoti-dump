@@ -4,6 +4,7 @@ use clap::{Parser, Subcommand};
 mod access_token;
 mod export;
 mod import;
+mod purge;
 mod types;
 mod utils;
 
@@ -14,10 +15,11 @@ struct Cli {
     command: Option<Commands>,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Clone)]
 enum Commands {
     Export,
     Import,
+    Purge,
 }
 
 #[tokio::main]
@@ -43,6 +45,14 @@ async fn main() -> Result<()> {
             import::saved_tracks::import_saved_tracks(&access_token).await?;
             import::playlists::import_playlists(&access_token, &user_id).await?;
             println!("Import completed successfully.");
+        }
+        Some(Commands::Purge) => {
+            let access_token = access_token::get_access_token(Commands::Purge).await?;
+
+            println!("Purging tracks and playlists...");
+            purge::saved_tracks::purge_saved_tracks(&access_token).await?;
+            purge::playlists::purge_playlists(&access_token).await?;
+            println!("Purge completed successfully.");
         }
         None => {
             println!("No command specified. Use --help for usage information.");

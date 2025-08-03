@@ -1,10 +1,10 @@
 # spoti-dump
 
-Export your Spotify saved tracks and playlists to csv, and import those same tracks to another Spotify account.
+Export your Spotify saved tracks and playlists to csv, import them to another Spotify account, or purge an account of all its music.
 
 ## Why
 
-While Spotify is a reliable service, having a local backup of your music library is always a good practice. Never lose your music collection, carefully curated over the years. Also, makes it easy to swap Spotify account for whatever reason. 
+While Spotify is a reliable service, having a local backup of your music library is always a good practice. Never lose your music collection, carefully curated over the years. Also, makes it easy to swap Spotify account for whatever reason. The purge command is useful for preparing a blank slate before importing.
 
 ## Usage
 
@@ -54,7 +54,7 @@ While Spotify is a reliable service, having a local backup of your music library
 
 ### Commands
 
-spoti-dump supports two main commands: `export` and `import`.
+spoti-dump supports three main commands: `export`, `import`, and `purge`.
 
 #### Export Command
 
@@ -81,9 +81,20 @@ spoti-dump import
 - Place the CSV files you want to import in a folder named `dump` in the same directory as the executable.
 - Ensure that the Spotify account email you added in the User Management step of the Prerequisites section matches the account you're importing to.
 
+#### Purge Command
+
+The `purge` command allows you to remove all saved tracks and playlists from your Spotify account. This is useful when you want to start with a clean slate before using the `import` command.
+
+Usage:
+```
+spoti-dump purge
+```
+
+**Warning:** This action is irreversible and will permanently delete all your saved tracks and playlists.
+
 ### Authorization Process
 
-After executing either the `export` or `import` command, you will be prompted to approve authorization for the app to perform the requested action. This process involves the following steps:
+After executing either the `export`, `import`, or `purge` command, you will be prompted to approve authorization for the app to perform the requested action. This process involves the following steps:
 
 1. A browser window will open automatically, directing you to the Spotify authorization page.
 2. Log in to your Spotify account if you haven't already.

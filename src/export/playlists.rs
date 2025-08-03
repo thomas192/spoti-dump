@@ -1,29 +1,22 @@
 use anyhow::{Context, Result};
 use csv::Writer;
 use rand::Rng;
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
-use serde::Deserialize;
 use std::fs;
 use std::path::Path;
 
 use crate::types::Track;
+use crate::utils;
 
-#[derive(Debug, Deserialize)]
-struct PlaylistsResponse {
-    items: Vec<Playlist>,
-    next: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct Playlist {
     id: String,
     name: String,
 }
 
-#[derive(Debug, Deserialize)]
-struct PlaylistTracksResponse {
-    items: Vec<Track>,
-    next: Option<String>,
+#[derive(Debug, serde::Deserialize)]
+struct PlaylistItem {
+    added_at: Option<String>,
+    track: Track,
 }
 
 pub async fn export_playlists(access_token: &String) -> Result<()> {
@@ -32,56 +25,17 @@ pub async fn export_playlists(access_token: &String) -> Result<()> {
         fs::create_dir(dump_dir).context("Failed to create dump directory")?;
     }
 
-    let client = reqwest::Client::new();
-    let mut url = "https://api.spotify.com/v1/me/playlists?limit=50".to_string();
+    let playlists: Vec<Playlist> = utils::get_all_items(access_token, "https://api.spotify.com/v1/me/playlists").await?;
 
-    loop {
-        let playlists = fetch_playlists(&client, &access_token, &url).await?;
-
-        for playlist in &playlists.items {
-            export_playlist(
-                &client,
-                &access_token,
-                &playlist.id,
-                &playlist.name,
-                &dump_dir,
-            )
-            .await?;
-        }
-
-        match playlists.next {
-            Some(next_url) => url = next_url,
-            None => break,
-        }
+    for playlist in playlists {
+        export_playlist(access_token, &playlist.id, &playlist.name, &dump_dir).await?;
     }
 
     println!("All playlists have been exported.");
     Ok(())
 }
 
-async fn fetch_playlists(
-    client: &reqwest::Client,
-    access_token: &str,
-    url: &str,
-) -> Result<PlaylistsResponse> {
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        AUTHORIZATION,
-        HeaderValue::from_str(&format!("Bearer {}", access_token))?,
-    );
-
-    let response = client.get(url).headers(headers).send().await?;
-
-    if !response.status().is_success() {
-        return Err(anyhow::anyhow!("API request failed: {:?}", response));
-    }
-
-    let playlists_response: PlaylistsResponse = response.json().await?;
-    Ok(playlists_response)
-}
-
 async fn export_playlist(
-    client: &reqwest::Client,
     access_token: &str,
     playlist_id: &str,
     playlist_name: &str,
@@ -94,37 +48,29 @@ async fn export_playlist(
 
     writer.write_record(&["Added At", "Track Name", "Artists", "Album", "Id"])?;
 
-    let mut url = format!(
-        "https://api.spotify.com/v1/playlists/{}/tracks?limit=50",
+    let url = format!(
+        "https://api.spotify.com/v1/playlists/{}/tracks",
         playlist_id
     );
+    let tracks: Vec<PlaylistItem> = utils::get_all_items(access_token, &url).await?;
 
-    loop {
-        let tracks_response: PlaylistTracksResponse =
-            fetch_playlist_tracks(client, access_token, &url).await?;
+    for item in tracks {
+        let artists = item
+            .track
+            .track
+            .artists
+            .iter()
+            .map(|a| a.name.clone())
+            .collect::<Vec<_>>()
+            .join(", ");
 
-        for track in tracks_response.items {
-            let artists = track
-                .track
-                .artists
-                .iter()
-                .map(|a| a.name.clone())
-                .collect::<Vec<_>>()
-                .join(", ");
-
-            writer.write_record(&[
-                &track.added_at.unwrap_or("Unknown".to_string()),
-                &track.track.name,
-                &artists,
-                &track.track.album.name,
-                &track.track.id,
-            ])?;
-        }
-
-        match tracks_response.next {
-            Some(next_url) => url = next_url,
-            None => break,
-        }
+        writer.write_record(&[
+            &item.added_at.unwrap_or("Unknown".to_string()),
+            &item.track.track.name,
+            &artists,
+            &item.track.track.album.name,
+            &item.track.track.id,
+        ])?;
     }
 
     writer.flush()?;
@@ -135,27 +81,6 @@ async fn export_playlist(
     );
 
     Ok(())
-}
-
-async fn fetch_playlist_tracks(
-    client: &reqwest::Client,
-    access_token: &str,
-    url: &str,
-) -> Result<PlaylistTracksResponse> {
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        AUTHORIZATION,
-        HeaderValue::from_str(&format!("Bearer {}", access_token))?,
-    );
-
-    let response = client.get(url).headers(headers).send().await?;
-
-    if !response.status().is_success() {
-        return Err(anyhow::anyhow!("API request failed: {:?}", response));
-    }
-
-    let tracks_response: PlaylistTracksResponse = response.json().await?;
-    Ok(tracks_response)
 }
 
 fn sanitize_filename(name: &str) -> String {

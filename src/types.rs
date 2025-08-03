@@ -2,7 +2,6 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Track {
-    pub added_at: Option<String>,
     pub track: TrackDetails,
 }
 

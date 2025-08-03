@@ -11,10 +11,10 @@ use crate::Commands;
 #[derive(Deserialize)]
 struct TokenResponse {
     access_token: String,
-    token_type: String,
-    scope: String,
-    expires_in: u32,
-    refresh_token: String,
+    // token_type: String,
+    // scope: String,
+    // expires_in: u32,
+    // refresh_token: String,
 }
 
 pub async fn get_access_token(command: Commands) -> Result<String> {
@@ -72,6 +72,7 @@ fn get_authorization_code(
     let scope = match command {
         Commands::Export => "user-library-read playlist-read-private",
         Commands::Import => "user-library-modify playlist-modify-public playlist-modify-private",
+        Commands::Purge => "user-library-read user-library-modify playlist-read-private playlist-modify-public playlist-modify-private",
     };
 
     let auth_url = Url::parse_with_params(

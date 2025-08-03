@@ -1,16 +1,15 @@
 use anyhow::{Context, Result};
 use csv::Writer;
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
-use serde::Deserialize;
 use std::fs;
 use std::path::Path;
 
 use crate::types::Track;
+use crate::utils;
 
-#[derive(Debug, Deserialize)]
-struct SpotifyResponse {
-    items: Vec<Track>,
-    next: Option<String>,
+#[derive(Debug, serde::Deserialize)]
+struct SavedTrack {
+    added_at: Option<String>,
+    track: Track,
 }
 
 pub async fn export_saved_tracks(access_token: &String) -> Result<()> {
@@ -29,46 +28,25 @@ pub async fn export_saved_tracks(access_token: &String) -> Result<()> {
 
     writer.write_record(&["Added At", "Track Name", "Artists", "Album", "Id"])?;
 
-    let client = reqwest::Client::new();
-    let mut url = "https://api.spotify.com/v1/me/tracks?limit=50&offset=0".to_string();
+    let tracks: Vec<SavedTrack> = utils::get_all_items(access_token, "https://api.spotify.com/v1/me/tracks").await?;
 
-    loop {
-        let mut headers = HeaderMap::new();
-        headers.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str(&format!("Bearer {}", access_token))?,
-        );
+    for track in tracks {
+        let artists = track
+            .track
+            .track
+            .artists
+            .iter()
+            .map(|a| a.name.clone())
+            .collect::<Vec<_>>()
+            .join(", ");
 
-        let response = client.get(url).headers(headers).send().await?;
-
-        if !response.status().is_success() {
-            return Err(anyhow::anyhow!("API request failed: {:?}", response));
-        }
-
-        let spotify_response: SpotifyResponse = response.json().await?;
-
-        for track in spotify_response.items {
-            let artists = track
-                .track
-                .artists
-                .iter()
-                .map(|a| a.name.clone())
-                .collect::<Vec<_>>()
-                .join(", ");
-
-            writer.write_record(&[
-                &track.added_at.unwrap_or("Unknown".to_string()),
-                &track.track.name,
-                &artists,
-                &track.track.album.name,
-                &track.track.id,
-            ])?;
-        }
-
-        match spotify_response.next {
-            Some(next_url) => url = next_url,
-            None => break,
-        }
+        writer.write_record(&[
+            &track.added_at.unwrap_or("Unknown".to_string()),
+            &track.track.track.name,
+            &artists,
+            &track.track.track.album.name,
+            &track.track.track.id,
+        ])?;
     }
 
     writer.flush()?;
