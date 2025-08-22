@@ -74,6 +74,25 @@ You need to create a free Spotify Developer App to use this tool.
 
 All commands are run from your terminal. The first time you run a command, your browser will open to ask for Spotify authorization. Just log in and click "Agree".
 
+### The `--force` Flag (Dry Run by Default)
+
+For safety, `spoti-dump` commands (`export`, `import`, and `purge`) operate in a "dry run" mode by default. This means they will show you what *would* happen without actually making any changes to your Spotify account or local files (for `export`).
+
+To execute the actual operation and apply the changes, you must explicitly include the `--force` flag with your command:
+
+```sh
+# Example: Exporting your Spotify data for real
+spoti-dump export --force
+
+# Example: Importing tracks and playlists for real
+spoti-dump import --force
+
+# Example: Purging your Spotify library for real
+spoti-dump purge --force
+```
+
+This design ensures that you always have a chance to review the intended actions before they are permanently applied.
+
 ### `export`
 
 Backs up your "Liked Songs" and all playlists.
