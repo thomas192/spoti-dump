@@ -1,114 +1,106 @@
 # spoti-dump
 
-Export your Spotify saved tracks and playlists to csv, import them to another Spotify account, or purge an account of all its music.
+A command-line tool to export, import, and purge your Spotify saved tracks and playlists.
 
-## Why
+`spoti-dump` makes it easy to back up your carefully curated music library, migrate it to a new account, or start fresh.
 
-While Spotify is a reliable service, having a local backup of your music library is always a good practice. Never lose your music collection, carefully curated over the years. Also, makes it easy to swap Spotify account for whatever reason. The purge command is useful for preparing a blank slate before importing.
+## Features
+
+- **Export**: Save your "Liked Songs" and all your playlists to local `.csv` files.
+- **Import**: Add songs and playlists from your `.csv` backups to any Spotify account.
+- **Purge**: Completely wipe all saved tracks and playlists from an account.
+
+## Getting Started
+
+### 1. Spotify App Setup
+
+You need to create a free Spotify Developer App to use this tool.
+
+<details>
+<summary>Click for step-by-step instructions</summary>
+
+1.  **Go to the Spotify Developer Dashboard and log in.**
+2.  **Click `Create app`.**
+    -   Give it any `App name` and `App description`.
+    -   Check the `Website` and `Redirect URI` boxes. You can put any valid URL for now (e.g., `http://localhost`).
+3.  **Go to your new app's `Settings`.**
+4.  **Add the Redirect URI:**
+    -   Find the `Redirect URIs` section.
+    -   Add exactly this URI: `http://localhost:8888/callback`
+    -   Click `Save`.
+5.  **Copy your Credentials:**
+    -   Find and copy your `Client ID` and `Client Secret`. You'll need them in the next step.
+6.  **(For Import Only) Add Users:**
+    -   In the Developer Dashboard, go to the `Users and Access` tab.
+    -   Add the email address of the Spotify account you want to **import music to**.
+
+</details>
+
+### 2. Configuration
+
+`spoti-dump` reads your Spotify credentials from a `.env` file.
+
+1.  Rename the `.env.example` file in the project directory to `.env`.
+2.  Open `.env` and paste your `Client ID` and `Client Secret`.
+
+    ```env
+    SPOTIFY_CLIENT_ID=your_client_id_here
+    SPOTIFY_CLIENT_SECRET=your_client_secret_here
+    ```
+
+### 3. Installation
+
+#### From Release (Recommended for Windows)
+
+1.  Download the latest `.exe` file from the Releases page.
+2.  Place the `.exe` and your `.env` file in the same folder.
+3.  Open PowerShell or Command Prompt in that folder and run commands.
+
+#### From Source (Linux / macOS / Windows)
+
+1.  Install the Rust toolchain.
+2.  Clone the repository:
+    ```sh
+    git clone https://github.com/thomas192/spoti-dump.git
+    cd spoti-dump
+    ```
+3.  Run the application with `cargo`:
+    ```sh
+    # Example for exporting
+    cargo run --release -- export
+    ```
 
 ## Usage
 
-### Prerequisites
+All commands are run from your terminal. The first time you run a command, your browser will open to ask for Spotify authorization. Just log in and click "Agree".
 
-1. **Spotify Developer Account**
-   - Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-   - Create a new app
+### `export`
 
-2. **App Configuration**
-   - Go to the app's settings
-   - Click Edit and add the following Redirect URI: http://localhost:8888/callback
-   - Locate and copy the Client ID and Client Secret
+Backs up your "Liked Songs" and all playlists.
 
-3. **Environment Setup**
-   - Copy the `.env.example` file and rename it to `.env`
-   - Open the `.env` file and paste your Client ID and Client Secret
-   - Ensure the `.env` file is in the same directory as the executable
-
-4. **User Management (for Import Feature)**
-   - In the Developer Dashboard, navigate to User Management
-   - Add the email associated with the Spotify account you want to import tracks and playlists to
-
-### Installation
-
-#### Windows
-
-1. Download the latest `.exe` file from the [Releases](https://github.com/thomas192/spoti-dump/releases) page
-2. Open PowerShell in the download folder
-3. Run the executable:
-   ```
-   ./spoti-dump-x86_64-pc-windows-msvc.exe export
-   ```
-
-#### Linux
-
-1. Install Rust:
-   ```
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   ```
-2. Clone the repository and run:
-   ```
-   git clone https://github.com/thomas192/spoti-dump.git
-   cd spoti-dump
-   cargo run --release -- export
-   ```
-
-### Commands
-
-spoti-dump supports three main commands: `export`, `import`, and `purge`.
-
-#### Export Command
-
-The `export` command allows you to backup your Spotify saved tracks and playlists.
-
-Usage:
-```
+```sh
 spoti-dump export
 ```
 
-This will create CSV files of your saved tracks and playlists in a folder named `dump` in the same directory as the executable.
+This creates a `dump` folder containing `saved_tracks.csv` and a `playlists` subfolder with a CSV for each of your playlists.
 
-#### Import Command
+### `import`
 
-The `import` command allows you to import saved tracks and playlists into your Spotify account.
+Imports tracks and playlists from a `dump` folder into your Spotify account.
 
-Usage:
-```
+```sh
 spoti-dump import
 ```
 
-**Important Notes for Import:**
-- The CSV files to be imported must be in the same format as those created by the `export` command.
-- Place the CSV files you want to import in a folder named `dump` in the same directory as the executable.
-- Ensure that the Spotify account email you added in the User Management step of the Prerequisites section matches the account you're importing to.
+- **Important:** Before running, make sure the `dump` folder (from a previous export) is in the same directory as the executable.
+- **To migrate to a new account:** Log out of Spotify in your browser, then log in to the **target account** *before* running the `import` command.
 
-#### Purge Command
+### `purge`
 
-The `purge` command allows you to remove all saved tracks and playlists from your Spotify account. This is useful when you want to start with a clean slate before using the `import` command.
+Removes all "Liked Songs" and unfollows all playlists from your account.
 
-Usage:
-```
+```sh
 spoti-dump purge
 ```
 
-**Warning:** This action is irreversible and will permanently delete all your saved tracks and playlists.
-
-### Authorization Process
-
-After executing either the `export`, `import`, or `purge` command, you will be prompted to approve authorization for the app to perform the requested action. This process involves the following steps:
-
-1. A browser window will open automatically, directing you to the Spotify authorization page.
-2. Log in to your Spotify account if you haven't already.
-3. Review the permissions requested by the app and click "Agree" to authorize.
-4. You will be redirected to a success page, indicating that the authorization is complete.
-5. Return to the terminal where you ran the command to continue the process.
-
-### Switching Accounts for Import
-
-If you want to import data to a different Spotify account than the one you exported from, follow these steps:
-
-1. After completing an export, log out of your Spotify account in the browser.
-2. Before running the `import` command, log in to the Spotify account you want to import the data to.
-3. Ensure that you've added this account's email to the User Management section in your Spotify Developer Dashboard as mentioned in the Prerequisites.
-4. Run the `import` command. When the authorization page opens, it should now be for the account you want to import to.
-
-**Note:** Always make sure you're logged into the correct Spotify account before authorizing the app for import to avoid importing data to the wrong account.
+> **Warning:** This action is irreversible. Use with caution!
