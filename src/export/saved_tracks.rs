@@ -12,7 +12,14 @@ struct SavedTrack {
     track: Option<Track>,
 }
 
-pub async fn export_saved_tracks(access_token: &String) -> Result<()> {
+pub async fn export_saved_tracks(access_token: &String, force: bool) -> Result<()> {
+    let tracks: Vec<SavedTrack> = utils::get_all_items(access_token, "https://api.spotify.com/v1/me/tracks").await?;
+
+    if !force {
+        println!("Dry run: would have exported {} saved tracks.", tracks.len());
+        return Ok(());
+    }
+
     let dump_dir = Path::new("dump");
     if !dump_dir.exists() {
         fs::create_dir(dump_dir).context("Failed to create dump directory")?;
@@ -28,7 +35,6 @@ pub async fn export_saved_tracks(access_token: &String) -> Result<()> {
 
     writer.write_record(&["Added At", "Track Name", "Artists", "Album", "Id"])?;
 
-    let tracks: Vec<SavedTrack> = utils::get_all_items(access_token, "https://api.spotify.com/v1/me/tracks").await?;
     let mut skipped_tracks_count = 0;
 
     for track in tracks {

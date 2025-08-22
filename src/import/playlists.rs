@@ -7,7 +7,7 @@ use std::path::Path;
 
 
 
-pub async fn import_playlists(access_token: &str, user_id: &str) -> Result<()> {
+pub async fn import_playlists(access_token: &str, user_id: &str, force: bool) -> Result<()> {
     let dump_dir = Path::new("dump");
 
     for entry in fs::read_dir(dump_dir)? {
@@ -16,12 +16,14 @@ pub async fn import_playlists(access_token: &str, user_id: &str) -> Result<()> {
         if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("csv") {
             let playlist_name = path.file_stem().unwrap().to_str().unwrap();
             if playlist_name != "saved_tracks" {
-                import_playlist(access_token, user_id, &path, playlist_name).await?;
+                import_playlist(access_token, user_id, &path, playlist_name, force).await?;
             }
         }
     }
 
-    println!("All playlists have been imported.");
+    if force {
+        println!("All playlists have been imported.");
+    }
     Ok(())
 }
 
@@ -30,30 +32,31 @@ async fn import_playlist(
     user_id: &str,
     csv_path: &Path,
     playlist_name: &str,
+    force: bool,
 ) -> Result<()> {
+    let mut reader = Reader::from_path(csv_path)?;
+    let track_uris: Vec<String> = reader
+        .records()
+        .filter_map(|result| {
+            result.ok().and_then(|record| {
+                record.get(4).map(|track_id| format!("spotify:track:{}", track_id))
+            })
+        })
+        .collect();
+
+    if !force {
+        println!("Dry run: would have imported playlist '{}' with {} tracks.", playlist_name, track_uris.len());
+        return Ok(());
+    }
+
     let client = reqwest::Client::new();
 
     // Create playlist
     let playlist_id = create_playlist(&client, access_token, user_id, playlist_name).await?;
 
-    // Read tracks from CSV and add them to the playlist
-    let mut reader = Reader::from_path(csv_path)?;
-    let mut track_uris = Vec::new();
-
-    for result in reader.records() {
-        let record = result?;
-        if let Some(track_id) = record.get(4) {
-            track_uris.push(format!("spotify:track:{}", track_id));
-
-            if track_uris.len() == 100 {
-                add_tracks_to_playlist(&client, access_token, &playlist_id, &track_uris).await?;
-                track_uris.clear();
-            }
-        }
-    }
-
-    if !track_uris.is_empty() {
-        add_tracks_to_playlist(&client, access_token, &playlist_id, &track_uris).await?;
+    // Add tracks to the playlist in chunks
+    for chunk in track_uris.chunks(100) {
+        add_tracks_to_playlist(&client, access_token, &playlist_id, chunk).await?;
     }
 
     println!("Playlist '{}' has been imported.", playlist_name);

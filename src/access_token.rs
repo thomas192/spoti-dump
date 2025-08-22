@@ -16,16 +16,17 @@ const SCOPE_IMPORT: &str = "user-library-modify playlist-modify-public playlist-
 const SCOPE_PURGE: &str = "user-library-read user-library-modify playlist-read-private playlist-modify-public playlist-modify-private";
 
 #[derive(Deserialize)]
-struct TokenResponse {
+struct AccessTokenResponse {
     access_token: String,
-    // token_type: String,
-    // scope: String,
-    // expires_in: u32,
-    // refresh_token: String,
+    refresh_token: Option<String>,
 }
 
 pub async fn get_access_token(command: Commands) -> Result<String> {
     dotenv::dotenv().context("Failed to load .env file")?;
+
+    if let Ok(refresh_token) = env::var("SPOTIFY_REFRESH_TOKEN") {
+        return get_access_token_from_refresh_token(&refresh_token).await;
+    }
 
     let client_id = env::var("SPOTIFY_CLIENT_ID").context("SPOTIFY_CLIENT_ID not set")?;
     let client_secret =
@@ -50,7 +51,47 @@ pub async fn get_access_token(command: Commands) -> Result<String> {
         ("client_secret", &client_secret),
     ];
 
-    let response: TokenResponse = client
+    let response: AccessTokenResponse = client
+        .post("https://accounts.spotify.com/api/token")
+        .headers(headers)
+        .form(&params)
+        .send()
+        .await
+        .context("Failed to send request")?
+        .json()
+        .await
+        .context("Failed to parse response")?;
+
+    if let Some(refresh_token) = response.refresh_token {
+        println!("Your refresh token is: {}", refresh_token);
+        println!("Please set it as SPOTIFY_REFRESH_TOKEN in your .env file.");
+    }
+
+    Ok(response.access_token)
+}
+
+pub async fn get_access_token_from_refresh_token(refresh_token: &str) -> Result<String> {
+    dotenv::dotenv().context("Failed to load .env file")?;
+
+    let client_id = env::var("SPOTIFY_CLIENT_ID").context("SPOTIFY_CLIENT_ID not set")?;
+    let client_secret =
+        env::var("SPOTIFY_CLIENT_SECRET").context("SPOTIFY_CLIENT_SECRET not set")?;
+
+    let client = reqwest::Client::new();
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        CONTENT_TYPE,
+        HeaderValue::from_static("application/x-www-form-urlencoded"),
+    );
+
+    let params = [
+        ("grant_type", "refresh_token"),
+        ("refresh_token", refresh_token),
+        ("client_id", &client_id),
+        ("client_secret", &client_secret),
+    ];
+
+    let response: AccessTokenResponse = client
         .post("https://accounts.spotify.com/api/token")
         .headers(headers)
         .form(&params)
@@ -72,9 +113,9 @@ fn get_authorization_code(command: Commands, client_id: &str) -> Result<(String,
     };
 
     let scope = match command {
-        Commands::Export => SCOPE_EXPORT,
-        Commands::Import => SCOPE_IMPORT,
-        Commands::Purge => SCOPE_PURGE,
+        Commands::Export { .. } => SCOPE_EXPORT,
+        Commands::Import { .. } => SCOPE_IMPORT,
+        Commands::Purge { .. } => SCOPE_PURGE,
     };
 
     let auth_url = Url::parse_with_params(

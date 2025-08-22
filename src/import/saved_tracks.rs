@@ -6,30 +6,31 @@ use std::path::Path;
 
 
 
-pub async fn import_saved_tracks(access_token: &str) -> Result<()> {
+pub async fn import_saved_tracks(access_token: &str, force: bool) -> Result<()> {
     let dump_dir = Path::new("dump");
     let input_file = dump_dir.join("saved_tracks.csv");
 
     let mut reader = Reader::from_path(&input_file)
         .with_context(|| format!("Failed to open CSV file: {}", input_file.to_str().unwrap()))?;
 
-    let client = reqwest::Client::new();
-    let mut track_ids = Vec::new();
+    let track_ids: Vec<String> = reader
+        .records()
+        .filter_map(|result| {
+            result.ok().and_then(|record| {
+                record.get(4).map(|track_id| track_id.to_string())
+            })
+        })
+        .collect();
 
-    for result in reader.records() {
-        let record = result?;
-        if let Some(track_id) = record.get(4) {
-            track_ids.push(track_id.to_string());
-
-            if track_ids.len() == 50 {
-                save_tracks(&client, access_token, &track_ids).await?;
-                track_ids.clear();
-            }
-        }
+    if !force {
+        println!("Dry run: would have imported {} saved tracks.", track_ids.len());
+        return Ok(());
     }
 
-    if !track_ids.is_empty() {
-        save_tracks(&client, access_token, &track_ids).await?;
+    let client = reqwest::Client::new();
+
+    for chunk in track_ids.chunks(50) {
+        save_tracks(&client, access_token, chunk).await?;
     }
 
     println!("All saved tracks have been imported.");

@@ -19,22 +19,24 @@ struct PlaylistItem {
     track: Option<Track>,
 }
 
-pub async fn export_playlists(access_token: &String) -> Result<()> {
-    let dump_dir = Path::new("dump");
-    if !dump_dir.exists() {
-        fs::create_dir(dump_dir).context("Failed to create dump directory")?;
-    }
-
+pub async fn export_playlists(access_token: &String, force: bool) -> Result<()> {
     let playlists: Vec<Playlist> = utils::get_all_items(access_token, "https://api.spotify.com/v1/me/playlists").await?;
     let mut total_skipped_tracks = 0;
 
-    for playlist in playlists {
-        total_skipped_tracks += export_playlist(access_token, &playlist.id, &playlist.name, &dump_dir).await?;
+    let dump_dir = Path::new("dump");
+    if force && !dump_dir.exists() {
+        fs::create_dir(dump_dir).context("Failed to create dump directory")?;
     }
 
-    println!("All playlists have been exported.");
-    if total_skipped_tracks > 0 {
-        println!("Skipped {} tracks in playlists.", total_skipped_tracks);
+    for playlist in playlists {
+        total_skipped_tracks += export_playlist(access_token, &playlist.id, &playlist.name, dump_dir, force).await?;
+    }
+
+    if force {
+        println!("All playlists have been exported.");
+        if total_skipped_tracks > 0 {
+            println!("Skipped {} tracks in playlists.", total_skipped_tracks);
+        }
     }
     Ok(())
 }
@@ -44,7 +46,23 @@ async fn export_playlist(
     playlist_id: &str,
     playlist_name: &str,
     dump_dir: &Path,
+    force: bool,
 ) -> Result<u32> {
+    let url = format!(
+        "https://api.spotify.com/v1/playlists/{}/tracks",
+        playlist_id
+    );
+    let tracks: Vec<PlaylistItem> = utils::get_all_items(access_token, &url).await?;
+
+    if !force {
+        println!(
+            "Dry run: would have exported playlist '{}' with {} tracks.",
+            playlist_name,
+            tracks.len()
+        );
+        return Ok(0);
+    }
+
     let sanitized_name = sanitize_filename(playlist_name);
     let output_file = dump_dir.join(format!("{}.csv", sanitized_name));
     let mut writer = Writer::from_path(&output_file)
@@ -52,11 +70,6 @@ async fn export_playlist(
 
     writer.write_record(&["Added At", "Track Name", "Artists", "Album", "Id"])?;
 
-    let url = format!(
-        "https://api.spotify.com/v1/playlists/{}/tracks",
-        playlist_id
-    );
-    let tracks: Vec<PlaylistItem> = utils::get_all_items(access_token, &url).await?;
     let mut skipped_tracks_count = 0;
 
     for item in tracks {
