@@ -2,6 +2,8 @@
 
 A command-line tool to export, import, and purge your Spotify saved tracks and playlists.
 
+While Spotify is a reliable service, having a local backup of your music library is always a good practice. Don't lose your music collection, carefully curated over the years.
+
 `spoti-dump` makes it easy to back up your carefully curated music library, migrate it to a new account, or start fresh.
 
 ## Features
