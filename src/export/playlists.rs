@@ -16,7 +16,7 @@ struct Playlist {
 #[derive(Debug, serde::Deserialize)]
 struct PlaylistItem {
     added_at: Option<String>,
-    track: Track,
+    track: Option<Track>,
 }
 
 pub async fn export_playlists(access_token: &String) -> Result<()> {
@@ -26,12 +26,16 @@ pub async fn export_playlists(access_token: &String) -> Result<()> {
     }
 
     let playlists: Vec<Playlist> = utils::get_all_items(access_token, "https://api.spotify.com/v1/me/playlists").await?;
+    let mut total_skipped_tracks = 0;
 
     for playlist in playlists {
-        export_playlist(access_token, &playlist.id, &playlist.name, &dump_dir).await?;
+        total_skipped_tracks += export_playlist(access_token, &playlist.id, &playlist.name, &dump_dir).await?;
     }
 
     println!("All playlists have been exported.");
+    if total_skipped_tracks > 0 {
+        println!("Skipped {} tracks in playlists.", total_skipped_tracks);
+    }
     Ok(())
 }
 
@@ -40,7 +44,7 @@ async fn export_playlist(
     playlist_id: &str,
     playlist_name: &str,
     dump_dir: &Path,
-) -> Result<()> {
+) -> Result<u32> {
     let sanitized_name = sanitize_filename(playlist_name);
     let output_file = dump_dir.join(format!("{}.csv", sanitized_name));
     let mut writer = Writer::from_path(&output_file)
@@ -53,24 +57,27 @@ async fn export_playlist(
         playlist_id
     );
     let tracks: Vec<PlaylistItem> = utils::get_all_items(access_token, &url).await?;
+    let mut skipped_tracks_count = 0;
 
     for item in tracks {
-        let artists = item
-            .track
-            .track
-            .artists
-            .iter()
-            .map(|a| a.name.clone())
-            .collect::<Vec<_>>()
-            .join(", ");
+        if let Some(track_data) = item.track {
+            let artists = track_data
+                .artists
+                .iter()
+                .map(|a| a.name.clone())
+                .collect::<Vec<_>>()
+                .join(", ");
 
-        writer.write_record(&[
-            &item.added_at.unwrap_or("Unknown".to_string()),
-            &item.track.track.name,
-            &artists,
-            &item.track.track.album.name,
-            &item.track.track.id,
-        ])?;
+            writer.write_record(&[
+                &item.added_at.unwrap_or("Unknown".to_string()),
+                &track_data.name,
+                &artists,
+                &track_data.album.name,
+                &track_data.id,
+            ])?;
+        } else {
+            skipped_tracks_count += 1;
+        }
     }
 
     writer.flush()?;
@@ -80,7 +87,7 @@ async fn export_playlist(
         output_file.to_str().unwrap()
     );
 
-    Ok(())
+    Ok(skipped_tracks_count)
 }
 
 fn sanitize_filename(name: &str) -> String {

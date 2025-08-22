@@ -9,7 +9,7 @@ use crate::utils;
 #[derive(Debug, serde::Deserialize)]
 struct SavedTrack {
     added_at: Option<String>,
-    track: Track,
+    track: Option<Track>,
 }
 
 pub async fn export_saved_tracks(access_token: &String) -> Result<()> {
@@ -29,24 +29,27 @@ pub async fn export_saved_tracks(access_token: &String) -> Result<()> {
     writer.write_record(&["Added At", "Track Name", "Artists", "Album", "Id"])?;
 
     let tracks: Vec<SavedTrack> = utils::get_all_items(access_token, "https://api.spotify.com/v1/me/tracks").await?;
+    let mut skipped_tracks_count = 0;
 
     for track in tracks {
-        let artists = track
-            .track
-            .track
-            .artists
-            .iter()
-            .map(|a| a.name.clone())
-            .collect::<Vec<_>>()
-            .join(", ");
+        if let Some(track_data) = track.track {
+            let artists = track_data
+                .artists
+                .iter()
+                .map(|a| a.name.clone())
+                .collect::<Vec<_>>()
+                .join(", ");
 
-        writer.write_record(&[
-            &track.added_at.unwrap_or("Unknown".to_string()),
-            &track.track.track.name,
-            &artists,
-            &track.track.track.album.name,
-            &track.track.track.id,
-        ])?;
+            writer.write_record(&[
+                &track.added_at.unwrap_or("Unknown".to_string()),
+                &track_data.name,
+                &artists,
+                &track_data.album.name,
+                &track_data.id,
+            ])?;
+        } else {
+            skipped_tracks_count += 1;
+        }
     }
 
     writer.flush()?;
@@ -54,6 +57,10 @@ pub async fn export_saved_tracks(access_token: &String) -> Result<()> {
         "Saved tracks have been exported to {}",
         output_file.to_str().unwrap()
     );
+
+    if skipped_tracks_count > 0 {
+        println!("Skipped {} saved tracks.", skipped_tracks_count);
+    }
 
     Ok(())
 }

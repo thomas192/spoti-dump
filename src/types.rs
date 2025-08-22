@@ -2,11 +2,6 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Track {
-    pub track: TrackDetails,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct TrackDetails {
     pub id: String,
     pub name: String,
     pub artists: Vec<Artist>,
