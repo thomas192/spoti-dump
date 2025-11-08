@@ -1,125 +1,105 @@
 # spoti-dump
 
-A command-line tool to export, import, and purge your Spotify saved tracks and playlists.
+`spoti-dump` is a small command-line app that backs up, restores, or wipes the saved tracks and playlists attached to a Spotify account. You just authorize once in your browser and the tool handles the rest.
 
-`spoti-dump` makes it easy to back up your carefully curated music library, migrate it to a new account, or start fresh.
+## Quick Start (no coding required)
 
-## Features
+1. **Create a Spotify developer app**
+   1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and sign in.
+   2. Click **Create app** → fill in any name/description → check the required boxes → Create.
+   3. Open the app’s **Settings**, scroll to **Redirect URIs**, and add **`http://127.0.0.1:8000/callback`** exactly. Click **Save**.
+   4. Copy the app’s **Client ID** and **Client Secret**. Keep this tab open; you’ll need them in the next step.
+   5. If you plan to run `import`, open the **Users and access** tab and add the email address of the Spotify account that will receive the imported music.
 
-- **Export**: Save your "Liked Songs" and all your playlists to local `.csv` files.
-- **Import**: Add songs and playlists from your `.csv` backups to any Spotify account.
-- **Purge**: Completely wipe all saved tracks and playlists from an account.
+2. **Download the app**
+   - Windows: grab the latest `spoti-dump.exe` from the Releases page.
+   - macOS/Linux: download the corresponding binary or use the source instructions below.
+   - Put the executable wherever you like (e.g., `Downloads/spoti-dump`).
 
-## Getting Started
+3. **Configure `.env`**
+   - Copy `.env.example` to `.env` (same folder as the executable).
+   - Fill in the IDs you copied:
 
-### 1. Spotify App Setup
+     ```env
+     SPOTIFY_CLIENT_ID=your_client_id_here
+     SPOTIFY_CLIENT_SECRET=your_client_secret_here
+     SPOTIFY_REFRESH_TOKEN=
+     ```
 
-You need to create a free Spotify Developer App to use this tool.
+   - Leave `SPOTIFY_REFRESH_TOKEN` empty for the first run. After you authorize once, the tool prints your refresh token—paste it back into `.env` so you never have to log in again.
 
-<details>
-<summary>Click for step-by-step instructions</summary>
+4. **Run a command**
+   - Open a terminal (PowerShell, Command Prompt, or macOS/Linux Terminal) in the folder that contains `spoti-dump` and `.env`.
+   - Example:
 
-1.  **Go to the Spotify Developer Dashboard and log in.**
-2.  **Click `Create app`.**
-    -   Give it any `App name` and `App description`.
-    -   Check the `Website` and `Redirect URI` boxes. You can put any valid URL for now (e.g., `http://localhost`).
-3.  **Go to your new app's `Settings`.**
-4.  **Add the Redirect URI:**
-    -   Find the `Redirect URIs` section.
-    -   Add exactly this URI: `http://localhost:8888/callback`
-    -   Click `Save`.
-5.  **Copy your Credentials:**
-    -   Find and copy your `Client ID` and `Client Secret`. You'll need them in the next step.
-6.  **(For Import Only) Add Users:**
-    -   In the Developer Dashboard, go to the `Users and Access` tab.
-    -   Add the email address of the Spotify account you want to **import music to**.
+     ```sh
+     spoti-dump export
+     ```
 
-</details>
+   - Your browser opens to Spotify’s consent screen. Click **Agree** and you’re done. The CLI prints a refresh token—copy it into `.env`.
 
-### 2. Configuration
+## Running commands
 
-`spoti-dump` reads your Spotify credentials from a `.env` file.
+### Dry runs and `--force`
 
-1.  Rename the `.env.example` file in the project directory to `.env`.
-2.  Open `.env` and paste your `Client ID` and `Client Secret`.
-
-    ```env
-    SPOTIFY_CLIENT_ID=your_client_id_here
-    SPOTIFY_CLIENT_SECRET=your_client_secret_here
-    ```
-
-### 3. Installation
-
-#### From Release (Recommended for Windows)
-
-1.  Download the latest `.exe` file from the Releases page.
-2.  Place the `.exe` and your `.env` file in the same folder.
-3.  Open PowerShell or Command Prompt in that folder and run commands.
-
-#### From Source (Linux / macOS / Windows)
-
-1.  Install the Rust toolchain.
-2.  Clone the repository:
-    ```sh
-    git clone https://github.com/thomas192/spoti-dump.git
-    cd spoti-dump
-    ```
-3.  Run the application with `cargo`:
-    ```sh
-    # Example for exporting
-    cargo run --release -- export
-    ```
-
-## Usage
-
-All commands are run from your terminal. The first time you run a command, your browser will open to ask for Spotify authorization. Just log in and click "Agree".
-
-### The `--force` Flag (Dry Run by Default)
-
-For safety, `spoti-dump` commands (`export`, `import`, and `purge`) operate in a "dry run" mode by default. This means they will show you what *would* happen without actually making any changes to your Spotify account or local files (for `export`).
-
-To execute the actual operation and apply the changes, you must explicitly include the `--force` flag with your command:
+Every command starts in **dry-run** mode so you can see what would happen without changing anything. Add `--force` to actually perform the export/import/purge.
 
 ```sh
-# Example: Exporting your Spotify data for real
 spoti-dump export --force
-
-# Example: Importing tracks and playlists for real
 spoti-dump import --force
-
-# Example: Purging your Spotify library for real
-spoti-dump purge --force
+spoti-dump purge --force   # irreversible
 ```
-
-This design ensures that you always have a chance to review the intended actions before they are permanently applied.
 
 ### `export`
 
-Backs up your "Liked Songs" and all playlists.
-
-```sh
-spoti-dump export
+```
+spoti-dump export [--force]
 ```
 
-This creates a `dump` folder containing `saved_tracks.csv` and a `playlists` subfolder with a CSV for each of your playlists.
+Creates a `dump` folder containing:
+- `saved_tracks.csv` with all liked songs.
+- One CSV per playlist (filenames are sanitized).
 
 ### `import`
 
-Imports tracks and playlists from a `dump` folder into your Spotify account.
-
-```sh
-spoti-dump import
+```
+spoti-dump import [--force]
 ```
 
-- **Important:** Before running, make sure the `dump` folder (from a previous export) is in the same directory as the executable.
-- **To migrate to a new account:** Log out of Spotify in your browser, then log in to the **target account** *before* running the `import` command.
+Reads the CSVs from the `dump` folder and recreates them in the currently logged-in Spotify account.
+- Make sure the `dump` folder sits next to the executable.
+- Log into the **destination** Spotify account in your browser before running `import`.
 
 ### `purge`
 
-Removes all "Liked Songs" and unfollows all playlists from your account.
-
-```sh
-spoti-dump purge
+```
+spoti-dump purge [--force]
 ```
 
-> **Warning:** This action is irreversible. Use with caution!
+Deletes every liked song and unfollows every playlist in the authorized account. **There’s no undo.** Always run once without `--force` to confirm.
+
+## Advanced: build from source
+
+```sh
+git clone https://github.com/thomas192/spoti-dump.git
+cd spoti-dump
+cargo run --release -- export
+```
+
+You still need the `.env` file in the project root before running `cargo`.
+
+### Automated Windows builds
+
+If you just need a fresh `.exe`, run the **`build-windows-release`** workflow on GitHub:
+
+1. Push your latest changes (or tag a release with `v*`).
+2. In the GitHub UI, open **Actions → build-windows-release → Run workflow**.
+3. Download the `spoti-dump-windows.zip` artifact. It contains `spoti-dump.exe`, `README.md`, and `.env.example`.
+4. Attach that ZIP to your GitHub Release if you triggered the workflow manually. When you push a tag (`v1.2.3`, etc.), the workflow auto-attaches the ZIP to the release for you.
+
+## Tips & troubleshooting
+
+- **Browser didn’t open?** Copy the URL printed in the terminal and paste it manually.
+- **“Invalid redirect URI” error?** Double-check the Spotify dashboard lists `http://127.0.0.1:8000/callback` and nothing else.
+- **Ran out of time during authorization?** Just re-run the command; a new link/state will be generated.
+- **Need to move to another PC?** Copy the `dump` folder and `.env` (with refresh token) along with the executable.

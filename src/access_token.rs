@@ -8,7 +8,7 @@ use url::Url;
 
 use crate::Commands;
 
-const REDIRECT_URI: &str = "http://localhost:8888/callback";
+const REDIRECT_URI: &str = "http://127.0.0.1:8000/callback";
 
 // Scopes for Spotify API
 const SCOPE_EXPORT: &str = "user-library-read playlist-read-private";
@@ -24,6 +24,9 @@ struct AccessTokenResponse {
 pub async fn get_access_token(command: Commands) -> Result<String> {
     dotenv::dotenv().context("Failed to load .env file")?;
 
+    let redirect_uri = Url::parse(REDIRECT_URI)
+        .expect("Hard-coded redirect URI should always be valid");
+
     if let Ok(refresh_token) = env::var("SPOTIFY_REFRESH_TOKEN") {
         return get_access_token_from_refresh_token(&refresh_token).await;
     }
@@ -33,7 +36,7 @@ pub async fn get_access_token(command: Commands) -> Result<String> {
         env::var("SPOTIFY_CLIENT_SECRET").context("SPOTIFY_CLIENT_SECRET not set")?;
 
     // Step 1: Get the authorization code
-    let (code, _) = get_authorization_code(command, &client_id)?;
+    let (code, _) = get_authorization_code(command, &client_id, &redirect_uri)?;
 
     // Step 2: Exchange the code for an access token
     let client = reqwest::Client::new();
@@ -105,7 +108,7 @@ pub async fn get_access_token_from_refresh_token(refresh_token: &str) -> Result<
     Ok(response.access_token)
 }
 
-fn get_authorization_code(command: Commands, client_id: &str) -> Result<(String, String)> {
+fn get_authorization_code(command: Commands, client_id: &str, redirect_uri: &Url) -> Result<(String, String)> {
     // Generate a random state string
     let state: String = {
         let random_bytes: Vec<u8> = (0..16).map(|_| rand::random::<u8>()).collect();
@@ -123,22 +126,40 @@ fn get_authorization_code(command: Commands, client_id: &str) -> Result<(String,
         &[
             ("client_id", client_id),
             ("response_type", "code"),
-            ("redirect_uri", REDIRECT_URI),
+            ("redirect_uri", redirect_uri.as_str()),
             ("state", &state),
             ("scope", scope),
         ],
     )?;
 
-    // Open the authorization URL in the user's default browser
-    open::that(auth_url.as_str())?;
+    let host = redirect_uri
+        .host_str()
+        .context("Redirect URI must include a host")?;
+    let port = redirect_uri
+        .port_or_known_default()
+        .context("Redirect URI must include a port")?;
+    let server_addr = format!("{}:{}", host, port);
+
+    // Open the authorization URL in the user's default browser; fall back to a manual step if it fails.
+    match open::that(auth_url.as_str()) {
+        Ok(()) => println!("Opened your browser for Spotify authorization."),
+        Err(err) => {
+            eprintln!(
+                "Failed to launch the browser automatically ({err}). Please open the URL manually:"
+            );
+            println!("{}", auth_url);
+        }
+    };
 
     // Start a local server to handle the callback
-    let server = Server::http("127.0.0.1:8888").unwrap();
+    let server = Server::http(&server_addr)
+        .map_err(|err| anyhow::anyhow!("Failed to start local callback server: {}", err))?;
     println!("Waiting for Spotify authorization... (will time out in 2 minutes)");
 
     // Wait for the callback with a timeout
     if let Ok(Some(request)) = server.recv_timeout(Duration::from_secs(120)) {
-            let url = Url::parse(&format!("http://localhost{}", request.url()))?;
+            let callback_url = format!("http://{}:{}{}", host, port, request.url());
+            let url = Url::parse(&callback_url)?;
             let code = url
                 .query_pairs()
                 .find(|(key, _)| key == "code")

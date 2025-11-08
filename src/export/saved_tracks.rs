@@ -39,20 +39,50 @@ pub async fn export_saved_tracks(access_token: &String, force: bool) -> Result<(
 
     for track in tracks {
         if let Some(track_data) = track.track {
-            let artists = track_data
-                .artists
-                .iter()
-                .map(|a| a.name.clone())
-                .collect::<Vec<_>>()
-                .join(", ");
+            let Track { id, name, artists, album } = track_data;
 
-            writer.write_record(&[
-                &track.added_at.unwrap_or("Unknown".to_string()),
-                &track_data.name,
-                &artists,
-                &track_data.album.name,
-                &track_data.id,
-            ])?;
+            if let Some(track_id) = id {
+                let added_at = track
+                    .added_at
+                    .clone()
+                    .unwrap_or_else(|| "Unknown".to_string());
+                let track_name = if name.is_empty() {
+                    "Unknown".to_string()
+                } else {
+                    name
+                };
+                let artist_names: Vec<String> = artists
+                    .into_iter()
+                    .filter_map(|artist| {
+                        let trimmed = artist.name.trim().to_string();
+                        if trimmed.is_empty() {
+                            None
+                        } else {
+                            Some(trimmed)
+                        }
+                    })
+                    .collect();
+                let artists_joined = if artist_names.is_empty() {
+                    "Unknown".to_string()
+                } else {
+                    artist_names.join(", ")
+                };
+                let album_name = if album.name.is_empty() {
+                    "Unknown".to_string()
+                } else {
+                    album.name
+                };
+
+                writer.write_record(&[
+                    added_at.as_str(),
+                    track_name.as_str(),
+                    artists_joined.as_str(),
+                    album_name.as_str(),
+                    track_id.as_str(),
+                ])?;
+            } else {
+                skipped_tracks_count += 1;
+            }
         } else {
             skipped_tracks_count += 1;
         }
