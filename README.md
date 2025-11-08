@@ -9,7 +9,6 @@
    2. Click **Create app** → fill in any name/description → check the required boxes → Create.
    3. Open the app’s **Settings**, scroll to **Redirect URIs**, and add **`http://127.0.0.1:8000/callback`** exactly. Click **Save**.
    4. Copy the app’s **Client ID** and **Client Secret**. Keep this tab open; you’ll need them in the next step.
-   5. If you plan to run `import`, open the **Users and access** tab and add the email address of the Spotify account that will receive the imported music.
 
 2. **Download the app**
    - Windows: grab the latest `spoti-dump.exe` from the Releases page.
